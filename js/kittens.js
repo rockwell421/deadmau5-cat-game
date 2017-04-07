@@ -2,36 +2,75 @@
 var GAME_WIDTH = 375;
 var GAME_HEIGHT = 500;
 
+
 var ENEMY_WIDTH = 75;
 var ENEMY_HEIGHT = 156;
 var MAX_ENEMIES = 3;
 
+
 var PLAYER_WIDTH = 75;
 var PLAYER_HEIGHT = 54;
+
 
 // These two constants keep us from using "magic numbers" in our code
 var LEFT_ARROW_CODE = 37;
 var RIGHT_ARROW_CODE = 39;
 
+
 // These two constants allow us to DRY
 var MOVE_LEFT = 'left';
 var MOVE_RIGHT = 'right';
 
+
+//new variable counter
+var gameCounter = 0;
+
+
 // Preload game images
 var images = {};
-['enemy.png', 'stars.png', 'player.png'].forEach(imgName => {
+['enemy.png', 'ded_sml.gif', 'splode_ded.gif'].forEach(imgName => {
     var img = document.createElement('img');
     img.src = 'images/' + imgName;
     images[imgName] = img;
 });
 
 
+// Preload background
+var background = [];
+['shimmeringstars.gif', 'sky.gif', 'stars.png'].forEach(imgName => {
+    var img = document.createElement('img');
+    img.src = 'images/' + imgName;
+    background.push(img);
+})
 
 
+//randomly selects a new background when the gameLoop is activated
+var backgroundIndex = Math.floor(Math.random() * background.length);
 
-// This section is where you will be doing most of your coding
-class Enemy {
+
+//sets up the animated player deadmau5 image
+var playerImage = [];
+['ded_sml.gif', 'deadmau5_0000_Layer-6.png'].forEach(imgName => {
+    var img = document.createElement('img');
+    img.src = 'images/' + imgName;
+    playerImage.push(img);
+});
+
+
+//sets the player index image at 0
+var playerIndexImage = 0;
+
+
+class Entity {
+    render(ctx) {
+        ctx.drawImage(this.sprite, this.x, this.y);
+    }
+}
+
+
+class Enemy extends Entity {
     constructor(xPos) {
+        super();
         this.x = xPos;
         this.y = -ENEMY_HEIGHT;
         this.sprite = images['enemy.png'];
@@ -44,16 +83,20 @@ class Enemy {
         this.y = this.y + timeDiff * this.speed;
     }
 
-    render(ctx) {
-        ctx.drawImage(this.sprite, this.x, this.y);
-    }
+    //render(ctx) {
+    //ctx.drawImage(this.sprite, this.x, this.y);
+    //}
 }
 
-class Player {
+class Player extends Entity {
     constructor() {
+        super();
         this.x = 2 * PLAYER_WIDTH;
         this.y = GAME_HEIGHT - PLAYER_HEIGHT - 10;
-        this.sprite = images['player.png'];
+        this.sprite = playerImage[playerIndexImage];
+
+        // Step.1 declare var for player lives //in the player class
+        this.playerLives = 3;
     }
 
     // This method is called by the game engine when left/right arrows are pressed
@@ -66,12 +109,27 @@ class Player {
         }
     }
 
+    // Create lives functions //in the player class  
+    changeLives(change) {
+        this.playerLives += change;
+    }
+
+    //This loop goes through the animated Deadmau5 image array and restarts the rendering at the end of the array 
+
     render(ctx) {
+        console.log(gameCounter);
+        if (gameCounter % 15 === 0) {
+            if (playerIndexImage == playerImage.length - 1) {
+                playerIndexImage = 0;
+            }
+            else {
+                playerIndexImage += 1;
+            }
+            this.sprite = playerImage[playerIndexImage];
+        }
         ctx.drawImage(this.sprite, this.x, this.y);
     }
 }
-
-
 
 
 
@@ -120,17 +178,30 @@ class Engine {
 
         var enemySpot;
         // Keep looping until we find a free enemy spot at random
-        while (!enemySpot || this.enemies[enemySpot]) {
+        //Changed the while loop from || to &&
+
+
+        //console.log('? ' + enemySpots);
+        //console.log(!enemySpot);
+
+
+        while (this.enemies[enemySpot]) {
             enemySpot = Math.floor(Math.random() * enemySpots);
         }
 
+        // console.log(enemySpot);
+
         this.enemies[enemySpot] = new Enemy(enemySpot * ENEMY_WIDTH);
+
+
     }
 
     // This method kicks off the game
     start() {
         this.score = 0;
         this.lastFrame = Date.now();
+
+
 
         // Listen for keyboard left/right and update the player
         document.addEventListener('keydown', e => {
@@ -156,6 +227,10 @@ class Engine {
     You should use this parameter to scale your update appropriately
      */
     gameLoop() {
+
+        //frame counter; increases the game counter
+        gameCounter += 1;
+
         // Check how long it's been since last frame
         var currentFrame = Date.now();
         var timeDiff = currentFrame - this.lastFrame;
@@ -167,7 +242,8 @@ class Engine {
         this.enemies.forEach(enemy => enemy.update(timeDiff));
 
         // Draw everything!
-        this.ctx.drawImage(images['stars.png'], 0, 0); // draw the star bg
+
+        this.ctx.drawImage(background[backgroundIndex], 0, 0); // draw the backgrounds
         this.enemies.forEach(enemy => enemy.render(this.ctx)); // draw the enemies
         this.player.render(this.ctx); // draw the player
 
@@ -184,7 +260,16 @@ class Engine {
             // If they are dead, then it's game over!
             this.ctx.font = 'bold 30px Impact';
             this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillText(this.score + ' GAME OVER', 5, 30);
+            this.ctx.fillText(this.score, 5, 30);
+
+            //Display lives // add it right in gameloop() right below the score both in if and else
+            this.ctx.fillText('Lives: ' + this.player.playerLives, 5, 70)
+
+            //Triggers the "Game Over" to appear on screen when the player runs out of lives
+            this.ctx.fillText('GAME OVER!', GAME_WIDTH * .33, GAME_HEIGHT / 2);
+
+            this.player.sprite = images['splode_ded.gif'];
+            this.playerExplosion()
         }
         else {
             // If player is not dead, then draw the score
@@ -192,15 +277,64 @@ class Engine {
             this.ctx.fillStyle = '#ffffff';
             this.ctx.fillText(this.score, 5, 30);
 
+            //Display lives // add it right in gameloop() right below the score both in if and else
+            this.ctx.fillText('Lives: ' + this.player.playerLives, 5, 70)
+
             // Set the time marker and redraw
             this.lastFrame = Date.now();
             requestAnimationFrame(this.gameLoop);
         }
     }
 
+    playerExplosion() {
+        var currentFrame = Date.now();
+        var timeDiff = currentFrame - this.lastFrame;
+
+        // Increase the score!
+        this.score += timeDiff;
+
+        // Call update on all enemies
+        this.enemies.forEach(enemy => enemy.update(timeDiff));
+
+        // Draw everything!
+        this.ctx.drawImage(images['stars.png'], 0, 0); // NEED TO CHANGE THIS
+        this.enemies.forEach(enemy => enemy.render(this.ctx)); // draw the enemies
+        this.player.render(this.ctx); // draw the player
+
+
+        // Check if any enemies should die
+        this.enemies.forEach((enemy, enemyIdx) => {
+            if (enemy.y > GAME_HEIGHT) {
+                delete this.enemies[enemyIdx];
+            }
+        });
+        this.setupEnemies();
+
+        this.lastFrame = Date.now();
+        requestAnimationFrame(() => this.playerExplosion());
+    }
+
     isPlayerDead() {
-        // TODO: fix this function!
-        return false;
+        var flag = false
+        this.enemies.forEach((enemy, enemyIdx) => {
+            if (
+                enemy.y > this.player.y - ENEMY_HEIGHT * 0.7 &&
+                enemy.y < this.player.y + 5 &&
+                enemy.x === this.player.x
+            ) {
+
+                //Everytime player's dead number counts -1 //in function isPlayerDead()
+                this.player.changeLives(-1);
+                delete this.enemies[enemyIdx];
+
+            }
+        });
+
+        // Until lives become 0, the game ends. //add it 
+        if (this.player.playerLives === 0) {
+            flag = true;
+        }
+        return flag;
     }
 }
 
