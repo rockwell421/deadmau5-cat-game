@@ -117,7 +117,7 @@ class Player extends Entity {
     //This loop goes through the animated Deadmau5 image array and restarts the rendering at the end of the array 
 
     render(ctx) {
-        console.log(gameCounter);
+        //console.log(gameCounter);
         if (gameCounter % 15 === 0) {
             if (playerIndexImage == playerImage.length - 1) {
                 playerIndexImage = 0;
@@ -315,6 +315,7 @@ class Engine {
     }
 
     isPlayerDead() {
+        //check for enemy and player collision by looping through the array of enemies and checking the value of their x & y coordinates
         var flag = false
         this.enemies.forEach((enemy, enemyIdx) => {
             if (
@@ -323,10 +324,9 @@ class Engine {
                 enemy.x === this.player.x
             ) {
 
-                //Everytime player's dead number counts -1 //in function isPlayerDead()
+        //Everytime a player dies, his live counts decrement by 1 // in function isPlayerDead()
                 this.player.changeLives(-1);
                 delete this.enemies[enemyIdx];
-
             }
         });
 
@@ -337,9 +337,6 @@ class Engine {
         return flag;
     }
 }
-
-
-
 
 
 // This section will start the game
